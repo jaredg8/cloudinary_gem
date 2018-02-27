@@ -11,8 +11,8 @@ end
 describe "Access Control" do
   let (:acl) {{
       :access_type => 'anonymous',
-      :start => '2018-02-22 16:20:57 +0200',
-      :end => '2018-03-22 00:00 +0200'
+      :start => '2019-02-22 16:20:57 +0200',
+      :end => '2019-03-22 00:00 +0200'
   }}
   let (:acl_2) {{
       :access_type => 'anonymous',
@@ -20,13 +20,16 @@ describe "Access Control" do
       :end => '2019-03-22 00:00 +0200'
   }}
   let (:acl_string) {
-    "{\"access_type\":\"anonymous\",\"start\":\"2019-02-22 16:20:57 +0200\",\"end\":\"2019-03-22 00:00 +0200\"}"
+    '{"access_type":"anonymous","start":"2019-02-22 16:20:57 +0200","end":"2019-03-22 00:00 +0200"}'
   }
-  let(:resource ){ Cloudinary::Uploader.upload(
-      TEST_IMG,
+  let (:options) {{
       :public_id => TIMESTAMP_TAG,
-      :tags => [TEST_TAG, TIMESTAMP_TAG, 'access_control_test'],
-      :access_control => [acl])
+      :tags => [TEST_TAG, TIMESTAMP_TAG, 'access_control_test']
+  }}
+  let(:resource ){
+    Cloudinary::Uploader.upload(
+      TEST_IMG,
+      options)
   }
   describe 'build_upload_params' do
     it "should accept a Hash value" do
@@ -60,7 +63,10 @@ describe "Access Control" do
       include_context "cleanup", TIMESTAMP_TAG
 
       it 'should allow the user to define ACL in the upload parameters' do
-
+        options[:access_control] = [acl]
+        expect(RestClient::Request).to receive(:execute).with(
+            deep_hash_value( {[:payload, :access_control] => "[#{acl_string}]"})
+        ).and_call_original
         expect(resource).to have_key('access_control')
         response_acl = resource["access_control"]
         expect(response_acl.length).to be(1)
@@ -74,6 +80,10 @@ describe "Access Control" do
       include_context "cleanup", TIMESTAMP_TAG
 
       it 'should allow the user to define ACL in the update parameters' do
+        resource # upload before setting the expect
+        expect(RestClient::Request).to receive(:execute).with(
+            deep_hash_value( {[:payload, :access_control] => "[#{acl_string}]"})
+        ).and_call_original
         result = Cloudinary::Api.update(
             resource['public_id'],
             :tags => [TEST_TAG, TIMESTAMP_TAG, 'access_control_test'],
